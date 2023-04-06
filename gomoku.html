@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>GoMoKu</title>
+    <style>
+        #header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        #board {
+            width: 402px;
+            height: 402px;
+            border: 1px solid black;
+            margin: 0 auto;
+            display: flex;
+            flex-wrap: wrap;
+            box-sizing: border-box;
+        }
+
+        .square {
+            width: 40px;
+            height: 40px;
+            border: 1px solid black;
+            box-sizing: border-box;
+            cursor: pointer;
+            background-image: url("./resources/background.gif");
+        }
+
+        .black {
+            background-image: url("./resources/blackStone.gif");
+        }
+
+        .white {
+            background-image: url("./resources/whiteStone.gif");
+        }
+    </style>
+</head>
+
+<body>
+    <div id="header">
+        <p>Player1: <span id="player1"></span></p>
+        <p>Player2: <span id="player2"></span></p>
+        <p><span id="game-status"></span></p>
+    </div>
+    <div id="board"></div>
+
+    <script>
+        is_pair = false;
+        // 获取元素
+        var player1 = document.getElementById('player1');
+        var player2 = document.getElementById('player2');
+        var gameStatus = document.getElementById('game-status');
+        var playerColor = "black";
+        var board = document.getElementById("board");
+        var squares = [];
+        var currentPlayer = "black";
+
+        // websocket
+        const socket = new WebSocket("ws://localhost:9990");
+
+        socket.onopen = () => {
+            alert("WebSocket connection established.");
+            let name = prompt("Please input your username.");
+            sendPair(name);
+            player1.textContent = name;
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.msgtype === "move") {
+                makeMove(data.squareid, data.color);
+            } else if (data.msgtype === "message") {
+                gameStatus.textContent = data.message;
+            }
+            else if (data.msgtype === "pair") {
+                is_pair = true;
+                player2.textContent = data.name;
+                playerColor = data.color;
+            }
+        };
+
+        function makeMove(id, color) {
+            var square = squares.find(id);
+            square.classList.add(currentPlayer);
+            // 判断输赢
+            if (checkWin(square.id)) {
+                alert(currentPlayer + " win !");
+                reset();
+                return;
+            }
+
+            // 换下一个玩家
+            currentPlayer = currentPlayer === "black" ? "white" : "black";
+            if (currentPlayer === "white") {
+                gameStatus.textContent = 'White time';
+            }
+            else {
+                gameStatus.textContent = 'Black time';
+            }
+        }
+
+        function sendMove(squareid, color) {
+            const data = { msgtype: "move", squareid: squareid, color: color };
+            socket.send(JSON.stringify(data));
+        }
+
+        function sendMessage(message) {
+            const data = { msgtype: "message", message: message };
+            socket.send(JSON.stringify(data));
+        }
+
+        function sendPair(name) {
+            const data = { msgtype: "pair", pair_name: name };
+            socket.send(JSON.stringify(data));
+        }
+
+        while (!is_pair) {
+            alert("Pairing, please wait...");
+        }
+
+        gameStatus.textContent = 'Game Start!';
+
+        // 创建10*10的棋盘
+        for (var i = 0; i < 100; i++) {
+            var square = document.createElement("div");
+            square.className = "square";
+            square.id = i;
+            square.addEventListener("click", handleClick);
+            board.appendChild(square);
+            squares.push(square);
+        }
+
+        gameStatus.textContent = 'Black time';
+
+        function handleClick(event) {
+            var square = event.target;
+            while (currentPlayer != playerColor) {
+                alert("It is not your time!");
+            }
+
+            // 如果这个格子已经下过了，就不能再下了
+            if (square.classList.contains("black") || square.classList.contains("white")) {
+                gameStatus.textContent = 'Here have been under, can no longer pieces.';
+                return;
+            }
+
+            // 下子
+            square.classList.add(currentPlayer);
+            sendMove(square.id, playerColor);
+
+            // 判断输赢
+            if (checkWin(square.id)) {
+                alert(currentPlayer + " win !");
+                reset();
+                return;
+            }
+
+            // 换下一个玩家
+            currentPlayer = currentPlayer === "black" ? "white" : "black";
+            if (currentPlayer === "white") {
+                gameStatus.textContent = 'White time';
+            }
+            else {
+                gameStatus.textContent = 'Black time';
+            }
+        }
+
+        function checkWin(id) {
+            var row = Math.floor(id / 10);
+            var col = id % 10;
+
+            var count = 0;
+
+            // 判断列
+            for (var i = 0; i < 10; i++) {
+                if (squares[i * 10 + col].classList.contains(currentPlayer)) {
+                    count++;
+                } else {
+                    count = 0;
+                }
+
+                if (count === 5) {
+                    return true;
+                }
+            }
+
+            // 判断行
+            count = 0;
+            for (var j = 0; j < 10; j++) {
+                if (squares[row * 10 + j].classList.contains(currentPlayer)) {
+                    count++;
+                } else {
+                    count = 0;
+                }
+
+                if (count === 5) {
+                    return true;
+                }
+            }
+
+            // 判断对角线
+            count = 0;
+            for (var k = -4; k <= 4; k++) {
+                if (row + k < 0 || row + k > 9 || col + k < 0 || col + k > 9) {
+                    continue;
+                }
+
+                if (squares[(row + k) * 10 + col + k].classList.contains(currentPlayer)) {
+                    count++;
+                } else {
+                    count = 0;
+                }
+
+                if (count === 5) {
+                    return true;
+                }
+            }
+
+            // 判断反对角线
+            count = 0;
+            for (var l = -4; l <= 4; l++) {
+                if (row + l < 0 || row + l > 9 || col - l < 0 || col - l > 9) {
+                    continue;
+                }
+
+                if (squares[(row + l) * 10 + col - l].classList.contains(currentPlayer)) {
+                    count++;
+                } else {
+                    count = 0;
+                }
+
+                if (count === 5) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        function reset() {
+            for (var i = 0; i < squares.length; i++) {
+                squares[i].classList.remove("black", "white");
+            }
+            currentPlayer = "black";
+        }
+    </script>
+</body>
+
+</html>
