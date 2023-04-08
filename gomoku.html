@@ -62,12 +62,15 @@
         var currentPlayer = "black";
 
         // websocket
-        const socket = new WebSocket("ws://localhost:9990");
+        const socket = new WebSocket("ws://10.250.140.146:9990");
 
         socket.onopen = () => {
             alert("WebSocket connection established.");
             let name = prompt("Please input your username.");
             sendPair(name);
+            // while (!is_pair) {
+            //     alert("Pairing, please wait...");
+            // }
             player1.textContent = name;
         };
 
@@ -80,13 +83,14 @@
             }
             else if (data.msgtype === "pair") {
                 is_pair = true;
-                player2.textContent = data.name;
+                player2.textContent = data.pair_name;
                 playerColor = data.color;
+                game();
             }
         };
 
         function makeMove(id, color) {
-            var square = squares.find(id);
+            var square = squares[id];
             square.classList.add(currentPlayer);
             // 判断输赢
             if (checkWin(square.id)) {
@@ -106,37 +110,37 @@
         }
 
         function sendMove(squareid, color) {
-            const data = { msgtype: "move", squareid: squareid, color: color };
+            const data = { msgtype: "move", squareid: squareid, color: color, message: "", pair_name: "" };
             socket.send(JSON.stringify(data));
         }
 
         function sendMessage(message) {
-            const data = { msgtype: "message", message: message };
+            const data = { msgtype: "message", squareid: "0", color: "", message: message, pair_name: "" };
             socket.send(JSON.stringify(data));
         }
 
         function sendPair(name) {
-            const data = { msgtype: "pair", pair_name: name };
+            const data = { msgtype: "pair", squareid: "0", color: "", message: "", pair_name: name };
             socket.send(JSON.stringify(data));
         }
 
-        while (!is_pair) {
-            alert("Pairing, please wait...");
+        function game() {
+            if (is_pair) {
+                gameStatus.textContent = 'Game Start!';
+
+                // 创建10*10的棋盘
+                for (var i = 0; i < 100; i++) {
+                    var square = document.createElement("div");
+                    square.className = "square";
+                    square.id = i;
+                    square.addEventListener("click", handleClick);
+                    board.appendChild(square);
+                    squares.push(square);
+                }
+
+                gameStatus.textContent = 'Black time';
+            }
         }
-
-        gameStatus.textContent = 'Game Start!';
-
-        // 创建10*10的棋盘
-        for (var i = 0; i < 100; i++) {
-            var square = document.createElement("div");
-            square.className = "square";
-            square.id = i;
-            square.addEventListener("click", handleClick);
-            board.appendChild(square);
-            squares.push(square);
-        }
-
-        gameStatus.textContent = 'Black time';
 
         function handleClick(event) {
             var square = event.target;
