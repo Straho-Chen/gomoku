@@ -68,9 +68,6 @@
             alert("WebSocket connection established.");
             let name = prompt("Please input your username.");
             sendPair(name);
-            // while (!is_pair) {
-            //     alert("Pairing, please wait...");
-            // }
             player1.textContent = name;
         };
 
@@ -143,35 +140,37 @@
         }
 
         function handleClick(event) {
-            var square = event.target;
-            while (currentPlayer != playerColor) {
-                alert("It is not your time!");
-            }
-
-            // 如果这个格子已经下过了，就不能再下了
-            if (square.classList.contains("black") || square.classList.contains("white")) {
-                gameStatus.textContent = 'Here have been under, can no longer pieces.';
-                return;
-            }
-
-            // 下子
-            square.classList.add(currentPlayer);
-            sendMove(square.id, playerColor);
-
-            // 判断输赢
-            if (checkWin(square.id)) {
-                alert(currentPlayer + " win !");
-                reset();
-                return;
-            }
-
-            // 换下一个玩家
-            currentPlayer = currentPlayer === "black" ? "white" : "black";
-            if (currentPlayer === "white") {
-                gameStatus.textContent = 'White time';
+            if (currentPlayer != playerColor) {
+                gameStatus.textContent = 'It is not your time!';
             }
             else {
-                gameStatus.textContent = 'Black time';
+                var square = event.target;
+
+                // 如果这个格子已经下过了，就不能再下了
+                if (square.classList.contains("black") || square.classList.contains("white")) {
+                    gameStatus.textContent = 'Here have been under, can no longer pieces.';
+                    return;
+                }
+
+                // 下子
+                square.classList.add(currentPlayer);
+                sendMove(square.id, playerColor);
+
+                // 判断输赢
+                if (checkWin(square.id)) {
+                    alert(currentPlayer + " win !");
+                    reset();
+                    return;
+                }
+
+                // 换下一个玩家
+                currentPlayer = currentPlayer === "black" ? "white" : "black";
+                if (currentPlayer === "white") {
+                    gameStatus.textContent = 'White time';
+                }
+                else {
+                    gameStatus.textContent = 'Black time';
+                }
             }
         }
 
